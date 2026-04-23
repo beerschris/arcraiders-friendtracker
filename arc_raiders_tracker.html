@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Squad Blueprint Tracker - CSV Live</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117; --card: #161b22; --gold: #f0b429; --border: #30363d;
+            --lightning: #e0e0e0; --loki: #38bdf8; --hoff: #4ade80;
+            --nibbz: #fb7185; --blankface: #fbbf24; --iziard: #a78bfa;
+        }
+        body { background: var(--bg); color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; }
+        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 25px; }
+        
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1100px; padding: 15px; }
+        
+        .cell { 
+            width: 95px; height: 115px; background: var(--card); border: 1px solid var(--border);
+            position: relative; cursor: help; display: flex; flex-direction: column; 
+            border-radius: 4px; overflow: hidden;
+        }
+        .cell:hover { border-color: var(--gold); transform: translateY(-4px); z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        
+        .img-box { width: 100%; height: 85px; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        .blueprint-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .item-label { 
+            height: 30px; background: #21262d; font-size: 9px; display: flex; align-items: center; 
+            justify-content: center; text-align: center; padding: 0 4px; font-weight: 600; color: #8b949e;
+            border-top: 1px solid var(--border);
+        }
+
+        .id-badge { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.4); z-index: 5; }
+        
+        .dots { position: absolute; bottom: 34px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; z-index: 5; }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: #000; border: 1px solid #30363d; }
+        
+        /* Active dot colors */
+        .dot.active.lightning { background: var(--lightning); box-shadow: 0 0 5px var(--lightning); }
+        .dot.active.loki { background: var(--loki); box-shadow: 0 0 5px var(--loki); }
+        .dot.active.hoff { background: var(--hoff); box-shadow: 0 0 5px var(--hoff); }
+        .dot.active.nibbz { background: var(--nibbz); box-shadow: 0 0 5px var(--nibbz); }
+        .dot.active.blankface { background: var(--blankface); box-shadow: 0 0 5px var(--blankface); }
+        .dot.active.iziard { background: var(--iziard); box-shadow: 0 0 5px var(--iziard); }
+
+        .tooltip { position: absolute; background: rgba(13, 17, 23, 0.95); border: 1px solid var(--gold); padding: 15px; display: none; z-index: 1000; width: 220px; border-radius: 6px; pointer-events: none; }
+        .legend { margin-top: 30px; display: flex; gap: 15px; padding: 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Squad Blueprint Tracker</h1>
+    <div class="grid" id="mainGrid">Loading CSV Data...</div>
+    <div id="tip" class="tooltip"></div>
+
+    <div class="legend">
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--lightning)"></div> Lightning</div>
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--loki)"></div> Loki</div>
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--hoff)"></div> Hoff</div>
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--nibbz)"></div> Nibbz</div>
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--blankface)"></div> Blankface</div>
+        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--iziard)"></div> Iziard</div>
+    </div>
+
+    <script>
+        const csvFile = "arcraiderblueprintfriendtrackerDB.csv";
+        const grid = document.getElementById('mainGrid');
+        const tip = document.getElementById('tip');
+
+        // Column mapping: maps your CSV headers to the CSS classes
+        const friendMap = {
+            "Lightning": "lightning",
+            "Loki": "loki",
+            "Hoff": "hoff",
+            "Nibbz": "nibbz",
+            "Blankface": "blankface",
+            "blank": "iziard" // Mapping 'blank' column to iziard dot
+        };
+
+        Papa.parse(csvFile, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                grid.innerHTML = ""; // Clear loading text
+                renderGrid(results.data);
+            }
+        });
+
+        function renderGrid(data) {
+            data.forEach(row => {
+                if (!row.ID) return; // Skip empty rows
+
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                // Build the dots based on CSV TRUE/FALSE values
+                let dotHtml = "";
+                let ownerNames = [];
+                
+                for (const [csvHeader, cssClass] of Object.entries(friendMap)) {
+                    const isOwned = row[csvHeader] === "TRUE";
+                    if (isOwned) ownerNames.push(csvHeader === "blank" ? "Iziard" : csvHeader);
+                    dotHtml += `<div class="dot ${cssClass} ${isOwned ? 'active' : ''}"></div>`;
+                }
+
+                cell.innerHTML = `
+                    <div class="id-badge">${row.ID}</div>
+                    <div class="img-box">
+                        <img src="icons/${row.ID}.png" class="blueprint-img" onerror="this.style.opacity=0">
+                    </div>
+                    <div class="dots">${dotHtml}</div>
+                    <div class="item-label">${row["Item Name"]}</div>
+                `;
+
+                cell.onmouseenter = (e) => {
+                    tip.style.display = 'block';
+                    tip.innerHTML = `
+                        <h4 style="margin:0; color:var(--gold); border-bottom:1px solid #444; padding-bottom:5px;">${row["Item Name"]}</h4>
+                        <p style="font-size:11px; margin-top:10px;"><strong>Owned By:</strong></p>
+                        <p style="font-size:12px; color:white;">${ownerNames.length > 0 ? ownerNames.join(', ') : 'None'}</p>
+                    `;
+                };
+                cell.onmousemove = (e) => {
+                    tip.style.left = (e.pageX + 15) + 'px';
+                    tip.style.top = (e.pageY + 15) + 'px';
+                };
+                cell.onmouseleave = () => tip.style.display = 'none';
+
+                grid.appendChild(cell);
+            });
+        }
+    </script>
+</body>
+</html>
