@@ -72,8 +72,8 @@
                 friends.forEach(f => {
                     const isActive = item[f] === true;
                     dotHtml += `<div class="dot ${f} ${isActive ? 'active' : ''}" 
-                                     onclick="toggleStatus(${item.id}, '${f}', ${isActive})" 
-                                     title="${f}"></div>`;
+                     onclick="toggleStatus(${item.id}, '${f}', ${isActive})" 
+                     title="${f}"></div>`;
                 });
 
                 cell.innerHTML = `
@@ -134,6 +134,14 @@
 // Call it when the page loads
 updateIntelligenceTimestamp();
     </script>
+    <div class="legend" style="display: flex; gap: 20px; justify-content: center; margin-top: 30px; background: #161b22; padding: 15px; border-radius: 8px; border: 1px solid #30363d;">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--lightning);"></div> Lightning</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--loki);"></div> Loki</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--hoff);"></div> Hoff</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--nibbz);"></div> Nibbz</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--blankface);"></div> Blankface</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><div style="width: 12px; height: 12px; border-radius: 50%; background: var(--iziard);"></div> Iziard</div>
+</div>
     <footer style="margin-top: 50px; padding: 20px; border-top: 1px solid #30363d; width: 100%; text-align: center;">
     <div id="last-updated" style="font-size: 11px; color: var(--gold); opacity: 0; transition: opacity 0.5s;">
         Syncing with GitHub...
