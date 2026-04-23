@@ -2,134 +2,142 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Squad Blueprint Tracker - CSV Live</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <title>Squad Tracker - LIVE DB</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg: #0d1117; --card: #161b22; --gold: #f0b429; --border: #30363d;
+            --bg: #0d1117; --card: #161b22; --gold: #f0b429;
             --lightning: #e0e0e0; --loki: #38bdf8; --hoff: #4ade80;
             --nibbz: #fb7185; --blankface: #fbbf24; --iziard: #a78bfa;
         }
-        body { background: var(--bg); color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; }
-        h1 { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 25px; }
-        
-        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1100px; padding: 15px; }
-        
+        body { background: var(--bg); color: #c9d1d9; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1100px; padding-bottom: 50px; }
         .cell { 
-            width: 95px; height: 115px; background: var(--card); border: 1px solid var(--border);
-            position: relative; cursor: help; display: flex; flex-direction: column; 
-            border-radius: 4px; overflow: hidden;
+            width: 100px; height: 130px; background: var(--card); border: 1px solid #30363d;
+            position: relative; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden;
         }
-        .cell:hover { border-color: var(--gold); transform: translateY(-4px); z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        
-        .img-box { width: 100%; height: 85px; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        .img-box { width: 100%; height: 90px; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         .blueprint-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .id-label { position: absolute; top: 2px; left: 4px; font-size: 10px; opacity: 0.5; color: white; }
         
-        .item-label { 
-            height: 30px; background: #21262d; font-size: 9px; display: flex; align-items: center; 
-            justify-content: center; text-align: center; padding: 0 4px; font-weight: 600; color: #8b949e;
-            border-top: 1px solid var(--border);
-        }
+        .item-label { height: 40px; background: #21262d; font-size: 9px; display: flex; align-items: center; justify-content: center; text-align: center; border-top: 1px solid #30363d; padding: 0 4px; }
 
-        .id-badge { position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.4); z-index: 5; }
-        
-        .dots { position: absolute; bottom: 34px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; z-index: 5; }
-        .dot { width: 7px; height: 7px; border-radius: 50%; background: #000; border: 1px solid #30363d; }
-        
-        /* Active dot colors */
+        .dots { position: absolute; bottom: 42px; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #000; border: 1px solid #30363d; cursor: pointer; transition: 0.2s; }
+        .dot:hover { transform: scale(1.4); border-color: white; }
+
         .dot.active.lightning { background: var(--lightning); box-shadow: 0 0 5px var(--lightning); }
         .dot.active.loki { background: var(--loki); box-shadow: 0 0 5px var(--loki); }
         .dot.active.hoff { background: var(--hoff); box-shadow: 0 0 5px var(--hoff); }
         .dot.active.nibbz { background: var(--nibbz); box-shadow: 0 0 5px var(--nibbz); }
         .dot.active.blankface { background: var(--blankface); box-shadow: 0 0 5px var(--blankface); }
         .dot.active.iziard { background: var(--iziard); box-shadow: 0 0 5px var(--iziard); }
-
-        .tooltip { position: absolute; background: rgba(13, 17, 23, 0.95); border: 1px solid var(--gold); padding: 15px; display: none; z-index: 1000; width: 220px; border-radius: 6px; pointer-events: none; }
-        .legend { margin-top: 30px; display: flex; gap: 15px; padding: 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h1>Squad Blueprint Tracker</h1>
-    <div class="grid" id="mainGrid">Loading CSV Data...</div>
-    <div id="tip" class="tooltip"></div>
-
-    <div class="legend">
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--lightning)"></div> Lightning</div>
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--loki)"></div> Loki</div>
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--hoff)"></div> Hoff</div>
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--nibbz)"></div> Nibbz</div>
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--blankface)"></div> Blankface</div>
-        <div class="legend-item"><div style="width:10px; height:10px; border-radius:50%; background:var(--iziard)"></div> Iziard</div>
-    </div>
+    <h1 style="color:var(--gold)">LIVE SQUAD TRACKER</h1>
+    <div class="grid" id="mainGrid">Syncing with database...</div>
 
     <script>
-        const csvFile = "arcraiderblueprintfriendtrackerDB.csv";
-        const grid = document.getElementById('mainGrid');
-        const tip = document.getElementById('tip');
+        // Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'https://atxlgwfsgneoymcazyzy.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_Lf_Grwcf8_uGf5Uiwm6Y4A_ZIPChWbN';
+        
+        // Initialize the client
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Column mapping: maps your CSV headers to the CSS classes
-        const friendMap = {
-            "Lightning": "lightning",
-            "Loki": "loki",
-            "Hoff": "hoff",
-            "Nibbz": "nibbz",
-            "Blankface": "blankface",
-            "blank": "iziard" // Mapping 'blank' column to iziard dot
-        };
+        const friends = ["lightning", "loki", "hoff", "nibbz", "blankface", "iziard"];
 
-        Papa.parse(csvFile, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                grid.innerHTML = ""; // Clear loading text
-                renderGrid(results.data);
+        async function fetchBlueprints() {
+            const { data, error } = await supabaseClient
+                .from('blueprints')
+                .select('*')
+                .order('id', { ascending: true });
+
+            if (error) {
+                document.getElementById('mainGrid').innerText = "Error: " + error.message;
+                return;
             }
-        });
+            renderGrid(data);
+        }
 
         function renderGrid(data) {
-            data.forEach(row => {
-                if (!row.ID) return; // Skip empty rows
-
+            const grid = document.getElementById('mainGrid');
+            grid.innerHTML = "";
+            data.forEach(item => {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 
-                // Build the dots based on CSV TRUE/FALSE values
                 let dotHtml = "";
-                let ownerNames = [];
-                
-                for (const [csvHeader, cssClass] of Object.entries(friendMap)) {
-                    const isOwned = row[csvHeader] === "TRUE";
-                    if (isOwned) ownerNames.push(csvHeader === "blank" ? "Iziard" : csvHeader);
-                    dotHtml += `<div class="dot ${cssClass} ${isOwned ? 'active' : ''}"></div>`;
-                }
+                friends.forEach(f => {
+                    const isActive = item[f] === true;
+                    dotHtml += `<div class="dot ${f} ${isActive ? 'active' : ''}" 
+                                     onclick="toggleStatus(${item.id}, '${f}', ${isActive})" 
+                                     title="${f}"></div>`;
+                });
 
                 cell.innerHTML = `
-                    <div class="id-badge">${row.ID}</div>
+                    <div class="id-label">#${item.id}</div>
                     <div class="img-box">
-                        <img src="icons/${row.ID}.png" class="blueprint-img" onerror="this.style.opacity=0">
+                        <img src="icons/${item.id}.png" class="blueprint-img" onerror="this.src='icons/placeholder.png'">
                     </div>
                     <div class="dots">${dotHtml}</div>
-                    <div class="item-label">${row["Item Name"]}</div>
+                    <div class="item-label">${item.name}</div>
                 `;
-
-                cell.onmouseenter = (e) => {
-                    tip.style.display = 'block';
-                    tip.innerHTML = `
-                        <h4 style="margin:0; color:var(--gold); border-bottom:1px solid #444; padding-bottom:5px;">${row["Item Name"]}</h4>
-                        <p style="font-size:11px; margin-top:10px;"><strong>Owned By:</strong></p>
-                        <p style="font-size:12px; color:white;">${ownerNames.length > 0 ? ownerNames.join(', ') : 'None'}</p>
-                    `;
-                };
-                cell.onmousemove = (e) => {
-                    tip.style.left = (e.pageX + 15) + 'px';
-                    tip.style.top = (e.pageY + 15) + 'px';
-                };
-                cell.onmouseleave = () => tip.style.display = 'none';
-
                 grid.appendChild(cell);
             });
         }
+
+        async function toggleStatus(id, friend, currentVal) {
+            const { error } = await supabaseClient
+                .from('blueprints')
+                .update({ [friend]: !currentVal })
+                .eq('id', id);
+
+            if (error) {
+                alert("Update failed: " + error.message);
+            } else {
+                fetchBlueprints(); // Refresh UI
+            }
+        }
+
+        fetchBlueprints();
+        async function updateIntelligenceTimestamp() {
+    const repo = "beerschris/arcraiders-friendtracker";
+    const statusElement = document.getElementById('last-updated');
+
+    try {
+        // Fetch the latest commit from the main branch
+        const response = await fetch(`https://api.github.com/repos/${repo}/commits/main`);
+        
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const data = await response.json();
+        const commitDate = new Date(data.commit.author.date);
+
+        // Format the date to look clean (e.g., Apr 22, 9:05 PM)
+        const formattedDate = commitDate.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        statusElement.innerText = "Intelligence Last Synced: " + formattedDate;
+        statusElement.style.opacity = "1"; // Make it visible once loaded
+    } catch (error) {
+        console.error("GitHub API Error:", error);
+        statusElement.innerText = "Intelligence Sync: Offline";
+    }
+}
+
+// Call it when the page loads
+updateIntelligenceTimestamp();
     </script>
+    <footer style="margin-top: 50px; padding: 20px; border-top: 1px solid #30363d; width: 100%; text-align: center;">
+    <div id="last-updated" style="font-size: 11px; color: var(--gold); opacity: 0; transition: opacity 0.5s;">
+        Syncing with GitHub...
+    </div>
+</footer>
 </body>
 </html>
