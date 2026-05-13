@@ -98,9 +98,13 @@
                 let dotHtml = "";
                 friends.forEach(f => {
                     const isActive = item[f] === true;
-                    dotHtml += `<div class="dot ${f} ${isActive ? 'active' : ''}" onclick="toggleStatus(${item.id}, '${f}', ${isActive})" title="${f}"></div>`;
+                    // Add a class 'hidden' if the checkbox for this friend is unchecked
+                    const isVisible = document.querySelector(`input[onchange*="${f}"]`)?.checked !== false;
+                    dotHtml += `<div class="dot ${f} ${isActive ? 'active' : ''} ${!isVisible ? 'hidden' : ''}" 
+                                     onclick="toggleStatus(${item.id}, '${f}', ${isActive})" 
+                                     title="${f}"></div>`;
                 });
-
+        
                 cell.innerHTML = `
                     <div class="id-label">#${item.id}</div>
                     <div class="img-box">
